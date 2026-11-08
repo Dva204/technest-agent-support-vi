@@ -16,23 +16,35 @@ class OpenAICompatLLM(BaseLLM):
         # Chuyển đổi tin nhắn nội bộ sang định dạng OpenAI Chat
         oai_messages = [{'role': 'system', 'content': system}]
         for m in messages:
-            role = m['role']
-            content = m['content']
-            if isinstance(content, str):
+            role = m.get('role', 'user')
+            content = m.get('content')
+            
+            # Nếu content là message object từ OpenAI client (có model_dump)
+            if hasattr(content, 'model_dump'):
+                d = content.model_dump(exclude_none=True)
+                if 'content' not in d or d['content'] is None:
+                    d['content'] = ''
+                oai_messages.append(d)
+            elif isinstance(content, dict) and ('tool_calls' in content or 'role' in content):
+                oai_messages.append(content)
+            elif isinstance(content, str):
                 oai_messages.append({'role': role, 'content': content})
             elif isinstance(content, list):
                 # Kiểm tra định dạng tool_result
                 if any(isinstance(c, dict) and c.get('type') == 'tool_result' for c in content):
                     for tr in content:
-                        oai_messages.append({
+                        item = {
                             'role': 'tool',
                             'tool_call_id': tr.get('tool_use_id'),
                             'content': tr.get('content', '')
-                        })
+                        }
+                        if tr.get('name'):
+                            item['name'] = tr.get('name')
+                        oai_messages.append(item)
                 else:
                     oai_messages.append({'role': role, 'content': str(content)})
             else:
-                oai_messages.append({'role': role, 'content': str(content)})
+                oai_messages.append({'role': role, 'content': str(content) if content is not None else ''})
 
         oai_tools = None
         if tools:
@@ -72,4 +84,3 @@ class OpenAICompatLLM(BaseLLM):
         in_tok = usage.prompt_tokens if usage else 0
         out_tok = usage.completion_tokens if usage else 0
         return LLMResult(text, calls, msg, in_tok, out_tok)
-

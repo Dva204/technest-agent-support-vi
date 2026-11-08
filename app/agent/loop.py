@@ -20,8 +20,12 @@ def run_turn(s, user_text, llm, cfg):
         results = []
         for c in r.tool_calls:
             out = T.call(c['name'], c['input'], s, cfg)
-            results.append({'type': 'tool_result', 'tool_use_id': c['id'],
-                            'content': json.dumps(out, ensure_ascii=False)})
+            results.append({
+                'type': 'tool_result',
+                'tool_use_id': c['id'],
+                'name': c['name'],
+                'content': json.dumps(out, ensure_ascii=False)
+            })
         s.messages.append({'role': 'user', 'content': results})
     s.last_reply = FALLBACK
     return FALLBACK
