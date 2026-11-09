@@ -93,8 +93,13 @@ def calc_shipping_fee(a, s, cfg):
             if row:
                 subtotal += row['price'] * i.qty
     city_clean = strip_accents(a.city).strip().lower()
+    is_free = subtotal >= 1000000
     fee = 0 if subtotal >= 1000000 else FEES_MAP.get(city_clean, 40000)
-    return {'ok': True, 'subtotal': subtotal, 'fee': fee}
+    if is_free:
+        reason = "Được miễn phí giao hàng do tổng đơn hàng đạt từ 1.000.000đ trở lên"
+    else:
+        reason = f"Cước phí vẫn chuyển tiêu chuẩn tới {a.city} là {fee:,}đ"
+    return {'ok': True, 'subtotal': subtotal, 'fee': fee, 'reason': reason}
 
 def decide_return(o, item, reason):
     if o['status'] == 'cancelled':
